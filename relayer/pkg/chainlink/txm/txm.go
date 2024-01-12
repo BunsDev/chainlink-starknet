@@ -58,7 +58,7 @@ type starktxm struct {
 
 func New(lggr logger.Logger, keystore loop.Keystore, cfg Config, getClient func() (*starknet.Client, error)) (StarkTXM, error) {
 	txm := &starktxm{
-		lggr:    logger.Named(lggr, "StarknetTxm"),
+		lggr:    logger.Named(lggr, "Txm"),
 		queue:   make(chan Tx, MaxQueueLen),
 		stop:    make(chan struct{}),
 		client:  utils.NewLazyLoad(getClient),
@@ -76,7 +76,7 @@ func (txm *starktxm) Name() string {
 }
 
 func (txm *starktxm) Start(ctx context.Context) error {
-	return txm.starter.StartOnce("starktxm", func() error {
+	return txm.starter.StartOnce("Txm", func() error {
 		if err := txm.nonce.Start(ctx); err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func (txm *starktxm) confirmLoop() {
 }
 
 func (txm *starktxm) Close() error {
-	return txm.starter.StopOnce("starktxm", func() error {
+	return txm.starter.StopOnce("Txm", func() error {
 		close(txm.stop)
 		txm.done.Wait()
 		return nil

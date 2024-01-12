@@ -1,6 +1,7 @@
 package chainlink
 
 import (
+"math/big"
 	"context"
 	"encoding/json"
 
@@ -17,20 +18,14 @@ var _ relaytypes.Relayer = (*relayer)(nil) //nolint:staticcheck
 
 type relayer struct {
 	chain starkchain.Chain
-	ctx   context.Context
 
 	lggr logger.Logger
-
-	cancel func()
 }
 
 func NewRelayer(lggr logger.Logger, chain starkchain.Chain) *relayer {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &relayer{
 		chain:  chain,
-		ctx:    ctx,
-		lggr:   lggr,
-		cancel: cancel,
+		lggr:   logger.Named(lggr, "Relayer"),
 	}
 }
 
@@ -42,10 +37,7 @@ func (r *relayer) Start(context.Context) error {
 	return nil
 }
 
-func (r *relayer) Close() error {
-	r.cancel()
-	return nil
-}
+func (r *relayer) Close() error {	return nil}
 
 func (r *relayer) Ready() error {
 	return r.chain.Ready()
@@ -57,7 +49,19 @@ func (r *relayer) HealthReport() map[string]error {
 	return map[string]error{r.Name(): r.Healthy()}
 }
 
-func (r *relayer) NewConfigProvider(args relaytypes.RelayArgs) (relaytypes.ConfigProvider, error) {
+func (r *relayer) GetChainStatus(ctx context.Context) (relaytypes.ChainStatus, error) {
+	return r.chain.GetChainStatus(ctx)
+}
+
+func (r *relayer) ListNodeStatuses(ctx context.Context, pageSize int32, pageToken string) (stats []relaytypes.NodeStatus, nextPageToken string, total int, err error) {
+	return r.chain.ListNodeStatuses(ctx, pageSize, pageToken)
+}
+
+func (r *relayer) Transact(ctx context.Context, from, to string, amount *big.Int, balanceCheck bool) error {
+	return r.chain.Transact(ctx, from, to, amount, balanceCheck)
+}
+
+func (r *relayer) NewConfigProvider(ctx context.Context, args relaytypes.RelayArgs) (relaytypes.ConfigProvider, error) {
 	var relayConfig RelayConfig
 
 	err := json.Unmarshal(args.RelayConfig, &relayConfig)
@@ -77,7 +81,7 @@ func (r *relayer) NewConfigProvider(args relaytypes.RelayArgs) (relaytypes.Confi
 	return configProvider, nil
 }
 
-func (r *relayer) NewMedianProvider(rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.MedianProvider, error) {
+func (r *relayer) NewMedianProvider(ctx context.Context, rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.MedianProvider, error) {
 	var relayConfig RelayConfig
 
 	err := json.Unmarshal(rargs.RelayConfig, &relayConfig)
@@ -102,18 +106,18 @@ func (r *relayer) NewMedianProvider(rargs relaytypes.RelayArgs, pargs relaytypes
 	return medianProvider, nil
 }
 
-func (r *relayer) NewMercuryProvider(rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.MercuryProvider, error) {
+func (r *relayer) NewMercuryProvider(ctx context.Context, rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.MercuryProvider, error) {
 	return nil, errors.New("mercury is not supported for starknet")
 }
 
-func (r *relayer) NewLLOProvider(rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.LLOProvider, error) {
+func (r *relayer) NewLLOProvider(ctx context.Context, rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.LLOProvider, error) {
 	return nil, errors.New("data streams is not supported for starknet")
 }
 
-func (r *relayer) NewFunctionsProvider(rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.FunctionsProvider, error) {
-	return nil, errors.New("functions are not supported for solana")
+func (r *relayer) NewFunctionsProvider(ctx context.Context, rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.FunctionsProvider, error) {
+	return nil, errors.New("functions are not supported for starknet")
 }
 
-func (r *relayer) NewAutomationProvider(rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.AutomationProvider, error) {
+func (r *relayer) NewAutomationProvider(ctx context.Context, rargs relaytypes.RelayArgs, pargs relaytypes.PluginArgs) (relaytypes.AutomationProvider, error) {
 	return nil, errors.New("automation is not supported for starknet")
 }
